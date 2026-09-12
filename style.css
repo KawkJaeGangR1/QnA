@@ -86,6 +86,13 @@ html, body {
 }
 .answer-cta:hover { border-color: var(--accent); color: var(--accent); }
 
+.admin-actions { display: flex; align-items: center; gap: 8px; align-self: flex-start; margin-top: 2px; }
+.icon-btn {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  padding: 4px; display: flex; align-items: center; justify-content: center; border-radius: 50%;
+}
+.icon-btn:hover { color: var(--danger); background: var(--surface-2); }
+
 /* 입력창 */
 .composer {
   display: flex; align-items: center; gap: 8px;

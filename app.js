@@ -104,18 +104,60 @@ function renderQuestions() {
       aMeta.className = "meta left";
       aMeta.textContent = formatTime(q.answeredAt);
       block.appendChild(aMeta);
+
+      if (isAdmin) {
+        const actions = document.createElement("div");
+        actions.className = "admin-actions";
+
+        const undoBtn = document.createElement("button");
+        undoBtn.className = "answer-cta";
+        undoBtn.textContent = "답변 취소";
+        undoBtn.addEventListener("click", () => retractAnswer(q.id));
+        actions.appendChild(undoBtn);
+        actions.appendChild(createDeleteButton(q.id));
+
+        block.appendChild(actions);
+      }
     } else if (isAdmin) {
+      const actions = document.createElement("div");
+      actions.className = "admin-actions";
+
       const btn = document.createElement("button");
       btn.className = "answer-cta";
       btn.textContent = "답변하기";
       btn.addEventListener("click", () => openAnswerModal(q.id, q.text));
-      block.appendChild(btn);
+      actions.appendChild(btn);
+      actions.appendChild(createDeleteButton(q.id));
+
+      block.appendChild(actions);
     }
 
     feed.appendChild(block);
   });
 
   feed.scrollTop = feed.scrollHeight;
+}
+
+function createDeleteButton(id) {
+  const btn = document.createElement("button");
+  btn.className = "icon-btn";
+  btn.setAttribute("aria-label", "삭제");
+  btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
+  btn.addEventListener("click", () => {
+    if (confirm("이 질문을 삭제할까요? 답변도 함께 사라져요.")) {
+      db.collection("questions").doc(id).delete();
+    }
+  });
+  return btn;
+}
+
+async function retractAnswer(id) {
+  if (!confirm("답변을 취소하고 미답변 상태로 되돌릴까요?")) return;
+  await db.collection("questions").doc(id).update({
+    answer: null,
+    answeredAt: null,
+    expression: null,
+  });
 }
 
 /* ===== 질문 제출 ===== */
