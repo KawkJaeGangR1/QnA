@@ -5,12 +5,12 @@
 const ADMIN_EMAIL = "kawkjaegang@admin.local";
 
 // 헤더에 표시할 기본 프로필 사진
-const AVATAR_URL = "assets/gwakjegang_default.png";
+const AVATAR_URL = "gwakjegang_default.png";
 
 // 답변 옆에 표시할 표정별 이미지. 나중에 표정이 늘어나면 여기에 추가하면 됩니다.
 const EXPRESSION_IMAGES = {
-  default: "assets/gwakjegang_default.png",
-  thinking: "assets/gwakjegang_thinking.png",
+  default: "gwakjegang_default.png",
+  thinking: "gwakjegang_thinking.png",
 };
 
 /* ===== 초기화 ===== */
