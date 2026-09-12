@@ -23,9 +23,11 @@ let currentExpression = "default";
 
 const el = (id) => document.getElementById(id);
 
-if (AVATAR_URL) {
-  el("mainAvatar").style.backgroundImage = `url(${AVATAR_URL})`;
-}
+db.collection("site").doc("profile").onSnapshot((doc) => {
+  const data = doc.data();
+  const url = (data && data.avatarUrl) || AVATAR_URL;
+  el("mainAvatar").style.backgroundImage = `url(${url})`;
+});
 
 /* ===== 상태(스탠딩) 표시 ===== */
 db.collection("site").doc("status").onSnapshot((doc) => {
@@ -39,6 +41,7 @@ auth.onAuthStateChanged((user) => {
   isAdmin = !!user && user.email === ADMIN_EMAIL;
   el("loginMenuItem").hidden = isAdmin;
   el("statusMenuItem").hidden = !isAdmin;
+  el("avatarMenuItem").hidden = !isAdmin;
   el("logoutMenuItem").hidden = !isAdmin;
   renderQuestions();
 });
@@ -197,6 +200,66 @@ el("statusSubmit").addEventListener("click", async () => {
     updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
   });
   el("statusBackdrop").classList.remove("open");
+});
+
+/* ===== 프로필 사진 변경 모달 ===== */
+let selectedAvatarFile = null;
+
+function resizeImageToDataUrl(file, maxSize = 240) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+el("avatarMenuItem").addEventListener("click", () => {
+  el("menuBackdrop").classList.remove("open");
+  selectedAvatarFile = null;
+  el("avatarFileInput").value = "";
+  el("avatarError").hidden = true;
+  el("avatarPreview").style.backgroundImage = el("mainAvatar").style.backgroundImage;
+  el("avatarBackdrop").classList.add("open");
+});
+el("avatarCancel").addEventListener("click", () => el("avatarBackdrop").classList.remove("open"));
+el("avatarBackdrop").addEventListener("click", (e) => {
+  if (e.target === el("avatarBackdrop")) el("avatarBackdrop").classList.remove("open");
+});
+el("avatarFileInput").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  selectedAvatarFile = file;
+  el("avatarPreview").style.backgroundImage = `url(${URL.createObjectURL(file)})`;
+});
+el("avatarSubmit").addEventListener("click", async () => {
+  if (!selectedAvatarFile) {
+    el("avatarBackdrop").classList.remove("open");
+    return;
+  }
+  try {
+    const dataUrl = await resizeImageToDataUrl(selectedAvatarFile, 240);
+    await db.collection("site").doc("profile").set({
+      avatarUrl: dataUrl,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    el("avatarBackdrop").classList.remove("open");
+  } catch (err) {
+    el("avatarError").textContent = "업로드에 실패했어요. 다시 시도해주세요.";
+    el("avatarError").hidden = false;
+  }
 });
 
 /* ===== 답변 작성 모달 ===== */
