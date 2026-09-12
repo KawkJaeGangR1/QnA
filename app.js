@@ -2,7 +2,7 @@
 // 관리자 계정은 이메일/비밀번호가 필요한 Firebase Auth 구조를 그대로 쓰되,
 // 화면에는 비밀번호만 물어보도록 이메일을 고정값으로 둡니다.
 // Firebase 콘솔 > Authentication에서 이 이메일로 계정을 하나 만들고 비밀번호를 설정하세요.
-const ADMIN_EMAIL = "gwakjegang@admin.local";
+const ADMIN_EMAIL = "kawkjaegang@admin.local";
 
 // 헤더에 표시할 기본 프로필 사진
 const AVATAR_URL = "assets/gwakjegang_default.png";
