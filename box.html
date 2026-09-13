@@ -18,6 +18,10 @@
 </head>
 <body>
 
+  <img id="cornerDeco" class="corner-deco" alt="코너 장식" hidden>
+  <div id="decoResizeHandle" class="deco-resize-handle"></div>
+  <button id="decoAdjustDone" class="deco-adjust-done" type="button">위치 조정 완료</button>
+
   <div id="app">
 
     <a href="index.html" class="workspace" id="workspaceBar">
@@ -84,6 +88,10 @@
       <button class="sheet-item" id="profileMenuItem" hidden>
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         <span>프로필 설정</span>
+      </button>
+      <button class="sheet-item" id="decoAdjustMenuItem" hidden>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 9l-3 3 3 3"/><path d="M9 5l3-3 3 3"/><path d="M15 19l3 3 3-3"/><path d="M19 9l3 3-3 3"/><path d="M2 12h20"/><path d="M12 2v20"/></svg>
+        <span>장식 위치 조정</span>
       </button>
       <button class="sheet-item" id="logoutMenuItem" hidden>
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
@@ -161,6 +169,15 @@
 
         <label>트위터 프로필 링크</label>
         <input type="text" id="twitterInput" placeholder="https://x.com/아이디">
+
+        <label>PC 화면 코너 장식 (사진/움짤, 선택)</label>
+        <div class="avatar-row">
+          <div class="bg-preview" id="cornerDecoPreview"></div>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <input type="file" id="cornerDecoFileInput" accept="image/*">
+            <button type="button" class="btn-ghost" id="cornerDecoClearBtn" style="align-self:flex-start; padding:4px 0;">장식 없애기</button>
+          </div>
+        </div>
 
         <div class="toggle-row">
           <span>시간 표시</span>

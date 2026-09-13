@@ -63,8 +63,28 @@ boxRef.onSnapshot((doc) => {
 
   el("attachBtn").hidden = !boxData.allowImageAttach;
 
+  if (boxData.cornerDecoUrl) {
+    el("cornerDeco").src = boxData.cornerDecoUrl;
+    el("cornerDeco").hidden = false;
+    applyCornerDecoPosition();
+  } else {
+    el("cornerDeco").hidden = true;
+  }
+
+  updateDecoAdjustVisibility();
   renderQuestions();
 });
+
+function applyCornerDecoPosition() {
+  const deco = el("cornerDeco");
+  deco.style.right = ((boxData && boxData.cornerDecoRight) || 24) + "px";
+  deco.style.bottom = ((boxData && boxData.cornerDecoBottom) || 24) + "px";
+  deco.style.width = ((boxData && boxData.cornerDecoWidth) || 140) + "px";
+}
+
+function updateDecoAdjustVisibility() {
+  el("decoAdjustMenuItem").hidden = !(isAdmin && boxData && boxData.cornerDecoUrl);
+}
 
 function applyTheme(box) {
   const root = document.documentElement.style;
@@ -114,6 +134,7 @@ auth.onAuthStateChanged((user) => {
   el("loginMenuItem").hidden = isAdmin;
   el("profileMenuItem").hidden = !isAdmin;
   el("logoutMenuItem").hidden = !isAdmin;
+  updateDecoAdjustVisibility();
   renderQuestions();
 });
 
@@ -365,10 +386,96 @@ el("loginSubmit").addEventListener("click", async () => {
   }
 });
 
+el("decoAdjustMenuItem").addEventListener("click", () => {
+  el("menuBackdrop").classList.remove("open");
+  enterDecoAdjustMode();
+});
+
+el("decoAdjustDone").addEventListener("click", () => exitDecoAdjustMode(true));
+
+function enterDecoAdjustMode() {
+  const deco = el("cornerDeco");
+  deco.style.pointerEvents = "auto";
+  deco.style.cursor = "move";
+  deco.style.outline = "2px dashed var(--accent)";
+  el("decoAdjustDone").classList.add("visible");
+  el("decoResizeHandle").classList.add("visible");
+  positionResizeHandle();
+}
+
+function exitDecoAdjustMode(save) {
+  const deco = el("cornerDeco");
+  deco.style.pointerEvents = "none";
+  deco.style.cursor = "";
+  deco.style.outline = "";
+  el("decoAdjustDone").classList.remove("visible");
+  el("decoResizeHandle").classList.remove("visible");
+  if (save) {
+    const rect = deco.getBoundingClientRect();
+    boxRef.update({
+      cornerDecoRight: Math.round(window.innerWidth - rect.right),
+      cornerDecoBottom: Math.round(window.innerHeight - rect.bottom),
+      cornerDecoWidth: Math.round(rect.width),
+    });
+  }
+}
+
+function positionResizeHandle() {
+  const rect = el("cornerDeco").getBoundingClientRect();
+  const handle = el("decoResizeHandle");
+  handle.style.left = (rect.right - 7) + "px";
+  handle.style.top = (rect.bottom - 7) + "px";
+}
+
+el("cornerDeco").addEventListener("mousedown", (e) => {
+  if (!el("decoAdjustDone").classList.contains("visible")) return;
+  e.preventDefault();
+  const deco = el("cornerDeco");
+  const rect = deco.getBoundingClientRect();
+  const startRight = window.innerWidth - rect.right;
+  const startBottom = window.innerHeight - rect.bottom;
+  const startX = e.clientX;
+  const startY = e.clientY;
+
+  function onMove(ev) {
+    deco.style.right = (startRight - (ev.clientX - startX)) + "px";
+    deco.style.bottom = (startBottom - (ev.clientY - startY)) + "px";
+    positionResizeHandle();
+  }
+  function onUp() {
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("mouseup", onUp);
+  }
+  document.addEventListener("mousemove", onMove);
+  document.addEventListener("mouseup", onUp);
+});
+
+el("decoResizeHandle").addEventListener("mousedown", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  const deco = el("cornerDeco");
+  const startWidth = deco.getBoundingClientRect().width;
+  const startX = e.clientX;
+
+  function onMove(ev) {
+    const newWidth = Math.min(320, Math.max(60, startWidth + (ev.clientX - startX)));
+    deco.style.width = newWidth + "px";
+    positionResizeHandle();
+  }
+  function onUp() {
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("mouseup", onUp);
+  }
+  document.addEventListener("mousemove", onMove);
+  document.addEventListener("mouseup", onUp);
+});
+
 /* ===== 프로필 설정 모달 ===== */
 let selectedAvatarFile = null;
 let selectedBgFile = null;
 let clearBg = false;
+let selectedCornerDecoFile = null;
+let clearCornerDeco = false;
 let workingExpressions = [];
 
 function renderExprList() {
@@ -459,12 +566,16 @@ el("profileMenuItem").addEventListener("click", () => {
   selectedAvatarFile = null;
   selectedBgFile = null;
   clearBg = false;
+  selectedCornerDecoFile = null;
+  clearCornerDeco = false;
   el("avatarFileInput").value = "";
   el("bgFileInput").value = "";
+  el("cornerDecoFileInput").value = "";
   el("profileError").hidden = true;
 
   el("avatarPreview").style.backgroundImage = el("mainAvatar").style.backgroundImage;
   el("bgPreview").style.backgroundImage = boxData.bgUrl ? `url(${boxData.bgUrl})` : "none";
+  el("cornerDecoPreview").style.backgroundImage = boxData.cornerDecoUrl ? `url(${boxData.cornerDecoUrl})` : "none";
   el("nicknameInput").value = boxData.nickname || "";
   el("twitterInput").value = boxData.twitterUrl || "";
 
@@ -542,6 +653,21 @@ el("bgClearBtn").addEventListener("click", () => {
   el("bgPreview").style.backgroundImage = "none";
 });
 
+el("cornerDecoFileInput").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  selectedCornerDecoFile = file;
+  clearCornerDeco = false;
+  el("cornerDecoPreview").style.backgroundImage = `url(${URL.createObjectURL(file)})`;
+});
+
+el("cornerDecoClearBtn").addEventListener("click", () => {
+  selectedCornerDecoFile = null;
+  clearCornerDeco = true;
+  el("cornerDecoFileInput").value = "";
+  el("cornerDecoPreview").style.backgroundImage = "none";
+});
+
 el("profileSubmit").addEventListener("click", async () => {
   el("profileError").hidden = true;
   el("profileSubmit").disabled = true;
@@ -576,6 +702,12 @@ el("profileSubmit").addEventListener("click", async () => {
       update.bgUrl = await resizeImageToDataUrl(selectedBgFile, 480, 0.7);
     } else if (clearBg) {
       update.bgUrl = firebase.firestore.FieldValue.delete();
+    }
+
+    if (selectedCornerDecoFile) {
+      update.cornerDecoUrl = await resizeImageToDataUrl(selectedCornerDecoFile, 200, 0.85, "png");
+    } else if (clearCornerDeco) {
+      update.cornerDecoUrl = firebase.firestore.FieldValue.delete();
     }
 
     await boxRef.update(update);

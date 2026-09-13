@@ -34,7 +34,8 @@ html, body {
 }
 
 @media (min-width: 481px) {
-  #app { border-radius: 20px; height: min(100dvh, 800px); margin-top: 24px; box-shadow: 0 24px 60px rgba(0,0,0,0.12); }
+  #app { max-width: 560px; border-radius: 20px; height: min(100dvh, 800px); margin-top: 24px; box-shadow: 0 24px 60px rgba(0,0,0,0.12); }
+  .char-avatar-img { width: 58px; height: 80px; }
 }
 
 /* 워크스페이스 바 */
@@ -292,3 +293,28 @@ html, body {
   font-size: 12px; color: var(--danger); background: var(--surface-2);
   border-radius: 8px; padding: 8px 10px; margin: 4px 0 0; line-height: 1.5;
 }
+
+.corner-deco {
+  display: none;
+  position: fixed;
+  height: auto;
+  z-index: 5;
+  pointer-events: none;
+}
+@media (min-width: 900px) {
+  .corner-deco { display: block; }
+}
+
+.deco-resize-handle {
+  display: none; position: fixed; width: 14px; height: 14px;
+  background: var(--accent); border: 2px solid #fff; border-radius: 50%;
+  cursor: nwse-resize; z-index: 6;
+}
+.deco-resize-handle.visible { display: block; }
+
+.deco-adjust-done {
+  display: none; position: fixed; top: 16px; right: 16px; z-index: 10;
+  background: var(--accent); color: #fff; border: none; border-radius: 20px;
+  padding: 10px 18px; font-size: 13px; cursor: pointer; font-family: inherit;
+}
+.deco-adjust-done.visible { display: block; }
