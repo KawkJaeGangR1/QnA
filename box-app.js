@@ -523,7 +523,7 @@ document.addEventListener("mousedown", (e) => {
   const toolbar = document.querySelector(`.deco-order-toolbar[data-for="${handle.dataset.for}"]`);
 
   function onMove(ev) {
-    const newWidth = Math.min(320, Math.max(50, startWidth + (ev.clientX - startX)));
+    const newWidth = Math.min(400, Math.max(50, startWidth + (ev.clientX - startX)));
     img.style.width = newWidth + "px";
     positionResizeHandleFor(img, handle);
     if (toolbar) positionOrderToolbarFor(img, toolbar);
@@ -618,7 +618,7 @@ el("decoAddBtn").addEventListener("click", async () => {
     return;
   }
   try {
-    const imageUrl = await resizeImageToDataUrl(file, 200, 0.85, "png");
+    const imageUrl = await resizeImageToDataUrl(file, 400, 0.85, "png");
     const idx = workingDecorations.length;
     workingDecorations.push({
       id: `${Date.now()}`,
