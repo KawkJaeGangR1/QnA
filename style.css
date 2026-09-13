@@ -52,7 +52,12 @@ html, body {
   padding: 14px 20px; border-bottom: 1px solid var(--line); flex-shrink: 0;
 }
 .dm-left { display: flex; align-items: center; gap: 10px; }
-.avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--surface-2); flex-shrink: 0; background-size: cover; background-position: center; }
+.avatar {
+  width: 40px; height: 40px; border-radius: 50%; background: var(--accent); flex-shrink: 0;
+  background-size: cover; background-position: center;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 500; font-size: 15px;
+}
 .name { font-size: 14px; font-weight: 500; margin: 0; }
 .status { font-size: 11px; color: var(--success); margin: 2px 0 0; }
 .menu-btn {
@@ -74,7 +79,12 @@ html, body {
 .bubble.question { background: var(--accent); color: #fff; border-radius: 16px 16px 4px 16px; }
 .bubble.answer { background: var(--surface-2); border: 1px solid var(--line); border-radius: 16px 16px 16px 4px; }
 .answer-row { display: flex; align-items: flex-end; gap: 6px; align-self: flex-start; }
-.char-avatar { width: 46px; height: 64px; object-fit: contain; object-position: bottom; flex-shrink: 0; }
+.char-avatar {
+  width: 34px; height: 34px; border-radius: 50%; background: var(--accent); flex-shrink: 0;
+  background-size: cover; background-position: center;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 500; font-size: 13px;
+}
 .meta { font-size: 10px; color: var(--muted); margin: 0; }
 .meta.right { align-self: flex-end; margin-right: 4px; }
 .meta.left { align-self: flex-start; margin-left: 4px; }
@@ -174,3 +184,36 @@ html, body {
   padding: 6px 12px; font-size: 12px; cursor: pointer; font-family: inherit; color: var(--ink);
 }
 .expression-picker button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* 랜딩 페이지 */
+#landing {
+  max-width: 380px; margin: 40px auto; padding: 28px 24px;
+  background: var(--surface); border-radius: 20px;
+}
+@media (min-width: 481px) {
+  #landing { box-shadow: 0 24px 60px rgba(0,0,0,0.12); }
+}
+.landing-title { font-size: 22px; font-weight: 700; line-height: 1.4; margin: 0 0 8px; text-align: center; }
+.landing-sub { font-size: 13px; color: var(--muted); margin: 0 0 24px; text-align: center; }
+.landing-tabs { display: flex; gap: 6px; background: var(--surface-2); border-radius: 20px; padding: 4px; margin-bottom: 20px; }
+.tab-btn {
+  flex: 1; border: none; background: none; border-radius: 16px; padding: 8px 0;
+  font-size: 13px; font-family: inherit; cursor: pointer; color: var(--muted);
+}
+.tab-btn.active { background: var(--surface); color: var(--ink); font-weight: 500; }
+.landing-form label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 6px; }
+.landing-form label:first-of-type { margin-top: 0; }
+.landing-form input {
+  width: 100%; border: 1px solid var(--line); border-radius: 12px;
+  padding: 10px 12px; font-size: 14px; font-family: inherit;
+}
+.theme-row { display: flex; gap: 8px; }
+.theme-btn {
+  flex: 1; border: 1px solid var(--line); background: none; border-radius: 12px;
+  padding: 12px 10px; cursor: pointer; font-family: inherit; text-align: left;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.theme-btn.active { border-color: var(--accent); border-width: 2px; }
+.theme-name { font-size: 12px; font-weight: 500; }
+.theme-sub { font-size: 11px; color: var(--muted); }
+.btn-primary.wide { width: 100%; margin-top: 18px; padding: 11px 0; font-size: 14px; }
