@@ -63,27 +63,29 @@ boxRef.onSnapshot((doc) => {
 
   el("attachBtn").hidden = !boxData.allowImageAttach;
 
-  if (boxData.cornerDecoUrl) {
-    el("cornerDeco").src = boxData.cornerDecoUrl;
-    el("cornerDeco").hidden = false;
-    applyCornerDecoPosition();
-  } else {
-    el("cornerDeco").hidden = true;
-  }
-
+  renderDecoLayer();
   updateDecoAdjustVisibility();
   renderQuestions();
 });
 
-function applyCornerDecoPosition() {
-  const deco = el("cornerDeco");
-  deco.style.right = ((boxData && boxData.cornerDecoRight) || 24) + "px";
-  deco.style.bottom = ((boxData && boxData.cornerDecoBottom) || 24) + "px";
-  deco.style.width = ((boxData && boxData.cornerDecoWidth) || 140) + "px";
+function renderDecoLayer() {
+  const layer = el("decoLayer");
+  layer.innerHTML = "";
+  (boxData.decorations || []).forEach((d) => {
+    const img = document.createElement("img");
+    img.className = "corner-deco-item";
+    img.src = d.imageUrl;
+    img.alt = "장식";
+    img.dataset.id = d.id;
+    img.style.right = (d.right || 24) + "px";
+    img.style.bottom = (d.bottom || 24) + "px";
+    img.style.width = (d.width || 120) + "px";
+    layer.appendChild(img);
+  });
 }
 
 function updateDecoAdjustVisibility() {
-  el("decoAdjustMenuItem").hidden = !(isAdmin && boxData && boxData.cornerDecoUrl);
+  el("decoAdjustMenuItem").hidden = !(isAdmin && boxData && boxData.decorations && boxData.decorations.length > 0);
 }
 
 function applyTheme(box) {
@@ -393,54 +395,72 @@ el("decoAdjustMenuItem").addEventListener("click", () => {
 
 el("decoAdjustDone").addEventListener("click", () => exitDecoAdjustMode(true));
 
+let decoAdjustActive = false;
+
 function enterDecoAdjustMode() {
-  const deco = el("cornerDeco");
-  deco.style.pointerEvents = "auto";
-  deco.style.cursor = "move";
-  deco.style.outline = "2px dashed var(--accent)";
+  decoAdjustActive = true;
+  document.querySelectorAll(".corner-deco-item").forEach((img) => {
+    img.style.pointerEvents = "auto";
+    img.style.cursor = "move";
+    img.style.outline = "2px dashed var(--accent)";
+    const handle = document.createElement("div");
+    handle.className = "deco-resize-handle visible";
+    handle.dataset.for = img.dataset.id;
+    document.body.appendChild(handle);
+    positionResizeHandleFor(img, handle);
+  });
   el("decoAdjustDone").classList.add("visible");
-  el("decoResizeHandle").classList.add("visible");
-  positionResizeHandle();
 }
 
 function exitDecoAdjustMode(save) {
-  const deco = el("cornerDeco");
-  deco.style.pointerEvents = "none";
-  deco.style.cursor = "";
-  deco.style.outline = "";
+  decoAdjustActive = false;
+  const items = document.querySelectorAll(".corner-deco-item");
+  items.forEach((img) => {
+    img.style.pointerEvents = "none";
+    img.style.cursor = "";
+    img.style.outline = "";
+  });
+  document.querySelectorAll(".deco-resize-handle").forEach((h) => h.remove());
   el("decoAdjustDone").classList.remove("visible");
-  el("decoResizeHandle").classList.remove("visible");
+
   if (save) {
-    const rect = deco.getBoundingClientRect();
-    boxRef.update({
-      cornerDecoRight: Math.round(window.innerWidth - rect.right),
-      cornerDecoBottom: Math.round(window.innerHeight - rect.bottom),
-      cornerDecoWidth: Math.round(rect.width),
+    const updated = (boxData.decorations || []).map((d) => {
+      const img = document.querySelector(`.corner-deco-item[data-id="${d.id}"]`);
+      if (!img) return d;
+      const rect = img.getBoundingClientRect();
+      return {
+        ...d,
+        right: Math.round(window.innerWidth - rect.right),
+        bottom: Math.round(window.innerHeight - rect.bottom),
+        width: Math.round(rect.width),
+      };
     });
+    boxRef.update({ decorations: updated });
   }
 }
 
-function positionResizeHandle() {
-  const rect = el("cornerDeco").getBoundingClientRect();
-  const handle = el("decoResizeHandle");
+function positionResizeHandleFor(img, handle) {
+  const rect = img.getBoundingClientRect();
   handle.style.left = (rect.right - 7) + "px";
   handle.style.top = (rect.bottom - 7) + "px";
 }
 
-el("cornerDeco").addEventListener("mousedown", (e) => {
-  if (!el("decoAdjustDone").classList.contains("visible")) return;
+el("decoLayer").addEventListener("mousedown", (e) => {
+  if (!decoAdjustActive) return;
+  const img = e.target.closest(".corner-deco-item");
+  if (!img) return;
   e.preventDefault();
-  const deco = el("cornerDeco");
-  const rect = deco.getBoundingClientRect();
+  const rect = img.getBoundingClientRect();
   const startRight = window.innerWidth - rect.right;
   const startBottom = window.innerHeight - rect.bottom;
   const startX = e.clientX;
   const startY = e.clientY;
+  const handle = document.querySelector(`.deco-resize-handle[data-for="${img.dataset.id}"]`);
 
   function onMove(ev) {
-    deco.style.right = (startRight - (ev.clientX - startX)) + "px";
-    deco.style.bottom = (startBottom - (ev.clientY - startY)) + "px";
-    positionResizeHandle();
+    img.style.right = (startRight - (ev.clientX - startX)) + "px";
+    img.style.bottom = (startBottom - (ev.clientY - startY)) + "px";
+    if (handle) positionResizeHandleFor(img, handle);
   }
   function onUp() {
     document.removeEventListener("mousemove", onMove);
@@ -450,17 +470,21 @@ el("cornerDeco").addEventListener("mousedown", (e) => {
   document.addEventListener("mouseup", onUp);
 });
 
-el("decoResizeHandle").addEventListener("mousedown", (e) => {
+document.addEventListener("mousedown", (e) => {
+  if (!decoAdjustActive) return;
+  const handle = e.target.closest(".deco-resize-handle");
+  if (!handle) return;
   e.preventDefault();
   e.stopPropagation();
-  const deco = el("cornerDeco");
-  const startWidth = deco.getBoundingClientRect().width;
+  const img = document.querySelector(`.corner-deco-item[data-id="${handle.dataset.for}"]`);
+  if (!img) return;
+  const startWidth = img.getBoundingClientRect().width;
   const startX = e.clientX;
 
   function onMove(ev) {
-    const newWidth = Math.min(320, Math.max(60, startWidth + (ev.clientX - startX)));
-    deco.style.width = newWidth + "px";
-    positionResizeHandle();
+    const newWidth = Math.min(320, Math.max(50, startWidth + (ev.clientX - startX)));
+    img.style.width = newWidth + "px";
+    positionResizeHandleFor(img, handle);
   }
   function onUp() {
     document.removeEventListener("mousemove", onMove);
@@ -474,8 +498,6 @@ el("decoResizeHandle").addEventListener("mousedown", (e) => {
 let selectedAvatarFile = null;
 let selectedBgFile = null;
 let clearBg = false;
-let selectedCornerDecoFile = null;
-let clearCornerDeco = false;
 let workingExpressions = [];
 
 function renderExprList() {
@@ -517,6 +539,54 @@ el("exprAddBtn").addEventListener("click", async () => {
     el("exprLabelInput").value = "";
     el("exprFileInput").value = "";
     renderExprList();
+  } catch (err) {
+    alert(err.message || "사진 처리에 실패했어요.");
+  }
+});
+
+let workingDecorations = [];
+
+function renderDecoList() {
+  const list = el("decoList");
+  list.innerHTML = "";
+  workingDecorations.forEach((d) => {
+    const chip = document.createElement("span");
+    chip.className = "expr-chip";
+    const img = document.createElement("img");
+    img.src = d.imageUrl;
+    img.alt = "장식";
+    chip.appendChild(img);
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.setAttribute("aria-label", "장식 삭제");
+    removeBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>';
+    removeBtn.addEventListener("click", () => {
+      workingDecorations = workingDecorations.filter((x) => x.id !== d.id);
+      renderDecoList();
+    });
+    chip.appendChild(removeBtn);
+    list.appendChild(chip);
+  });
+}
+
+el("decoAddBtn").addEventListener("click", async () => {
+  const file = el("decoFileInput").files[0];
+  if (!file) {
+    alert("사진을 선택해주세요.");
+    return;
+  }
+  try {
+    const imageUrl = await resizeImageToDataUrl(file, 200, 0.85, "png");
+    const idx = workingDecorations.length;
+    workingDecorations.push({
+      id: `${Date.now()}`,
+      imageUrl,
+      right: 24 + idx * 24,
+      bottom: 24 + idx * 24,
+      width: 120,
+    });
+    el("decoFileInput").value = "";
+    renderDecoList();
   } catch (err) {
     alert(err.message || "사진 처리에 실패했어요.");
   }
@@ -566,16 +636,12 @@ el("profileMenuItem").addEventListener("click", () => {
   selectedAvatarFile = null;
   selectedBgFile = null;
   clearBg = false;
-  selectedCornerDecoFile = null;
-  clearCornerDeco = false;
   el("avatarFileInput").value = "";
   el("bgFileInput").value = "";
-  el("cornerDecoFileInput").value = "";
   el("profileError").hidden = true;
 
   el("avatarPreview").style.backgroundImage = el("mainAvatar").style.backgroundImage;
   el("bgPreview").style.backgroundImage = boxData.bgUrl ? `url(${boxData.bgUrl})` : "none";
-  el("cornerDecoPreview").style.backgroundImage = boxData.cornerDecoUrl ? `url(${boxData.cornerDecoUrl})` : "none";
   el("nicknameInput").value = boxData.nickname || "";
   el("twitterInput").value = boxData.twitterUrl || "";
 
@@ -583,6 +649,10 @@ el("profileMenuItem").addEventListener("click", () => {
   el("exprLabelInput").value = "";
   el("exprFileInput").value = "";
   renderExprList();
+
+  workingDecorations = (boxData.decorations || []).slice();
+  el("decoFileInput").value = "";
+  renderDecoList();
 
   const status = boxData.status || { preset: "근무중", note: "", location: "" };
   document.querySelectorAll(".preset-btn").forEach((b) => {
@@ -653,21 +723,6 @@ el("bgClearBtn").addEventListener("click", () => {
   el("bgPreview").style.backgroundImage = "none";
 });
 
-el("cornerDecoFileInput").addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  selectedCornerDecoFile = file;
-  clearCornerDeco = false;
-  el("cornerDecoPreview").style.backgroundImage = `url(${URL.createObjectURL(file)})`;
-});
-
-el("cornerDecoClearBtn").addEventListener("click", () => {
-  selectedCornerDecoFile = null;
-  clearCornerDeco = true;
-  el("cornerDecoFileInput").value = "";
-  el("cornerDecoPreview").style.backgroundImage = "none";
-});
-
 el("profileSubmit").addEventListener("click", async () => {
   el("profileError").hidden = true;
   el("profileSubmit").disabled = true;
@@ -693,6 +748,7 @@ el("profileSubmit").addEventListener("click", async () => {
       showTime,
       allowImageAttach,
       expressions: workingExpressions,
+      decorations: workingDecorations,
     };
 
     if (selectedAvatarFile) {
@@ -702,12 +758,6 @@ el("profileSubmit").addEventListener("click", async () => {
       update.bgUrl = await resizeImageToDataUrl(selectedBgFile, 480, 0.7);
     } else if (clearBg) {
       update.bgUrl = firebase.firestore.FieldValue.delete();
-    }
-
-    if (selectedCornerDecoFile) {
-      update.cornerDecoUrl = await resizeImageToDataUrl(selectedCornerDecoFile, 200, 0.85, "png");
-    } else if (clearCornerDeco) {
-      update.cornerDecoUrl = firebase.firestore.FieldValue.delete();
     }
 
     await boxRef.update(update);

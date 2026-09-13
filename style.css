@@ -294,7 +294,7 @@ html, body {
   border-radius: 8px; padding: 8px 10px; margin: 4px 0 0; line-height: 1.5;
 }
 
-.corner-deco {
+.corner-deco-item {
   display: none;
   position: fixed;
   height: auto;
@@ -302,7 +302,7 @@ html, body {
   pointer-events: none;
 }
 @media (min-width: 900px) {
-  .corner-deco { display: block; }
+  .corner-deco-item { display: block; }
 }
 
 .deco-resize-handle {
