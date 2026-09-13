@@ -71,7 +71,7 @@ boxRef.onSnapshot((doc) => {
 function renderDecoLayer() {
   const layer = el("decoLayer");
   layer.innerHTML = "";
-  (boxData.decorations || []).forEach((d) => {
+  (boxData.decorations || []).forEach((d, i) => {
     const img = document.createElement("img");
     img.className = "corner-deco-item";
     img.src = d.imageUrl;
@@ -80,6 +80,7 @@ function renderDecoLayer() {
     img.style.right = (d.right || 24) + "px";
     img.style.bottom = (d.bottom || 24) + "px";
     img.style.width = (d.width || 120) + "px";
+    img.style.zIndex = String(5 + (d.z != null ? d.z : i));
     layer.appendChild(img);
   });
 }
@@ -396,47 +397,62 @@ el("decoAdjustMenuItem").addEventListener("click", () => {
 el("decoAdjustDone").addEventListener("click", () => exitDecoAdjustMode(true));
 
 let decoAdjustActive = false;
+let adjustZState = [];
 
 function enterDecoAdjustMode() {
   decoAdjustActive = true;
+  adjustZState = (boxData.decorations || []).map((d, i) => ({ id: d.id, z: d.z != null ? d.z : i }));
+
   document.querySelectorAll(".corner-deco-item").forEach((img) => {
     img.style.pointerEvents = "auto";
     img.style.cursor = "move";
     img.style.outline = "2px dashed var(--accent)";
+
     const handle = document.createElement("div");
     handle.className = "deco-resize-handle visible";
     handle.dataset.for = img.dataset.id;
     document.body.appendChild(handle);
     positionResizeHandleFor(img, handle);
+
+    const toolbar = document.createElement("div");
+    toolbar.className = "deco-order-toolbar";
+    toolbar.dataset.for = img.dataset.id;
+    toolbar.innerHTML =
+      '<button type="button" data-action="back">뒤로</button>' +
+      '<button type="button" data-action="front">앞으로</button>';
+    document.body.appendChild(toolbar);
+    positionOrderToolbarFor(img, toolbar);
   });
   el("decoAdjustDone").classList.add("visible");
 }
 
 function exitDecoAdjustMode(save) {
   decoAdjustActive = false;
-  const items = document.querySelectorAll(".corner-deco-item");
-  items.forEach((img) => {
+  document.querySelectorAll(".corner-deco-item").forEach((img) => {
     img.style.pointerEvents = "none";
     img.style.cursor = "";
     img.style.outline = "";
   });
-  document.querySelectorAll(".deco-resize-handle").forEach((h) => h.remove());
+  document.querySelectorAll(".deco-resize-handle, .deco-order-toolbar").forEach((n) => n.remove());
   el("decoAdjustDone").classList.remove("visible");
 
   if (save) {
     const updated = (boxData.decorations || []).map((d) => {
       const img = document.querySelector(`.corner-deco-item[data-id="${d.id}"]`);
-      if (!img) return d;
-      const rect = img.getBoundingClientRect();
-      return {
-        ...d,
-        right: Math.round(window.innerWidth - rect.right),
-        bottom: Math.round(window.innerHeight - rect.bottom),
-        width: Math.round(rect.width),
-      };
+      const zEntry = adjustZState.find((z) => z.id === d.id);
+      const merged = { ...d };
+      if (img) {
+        const rect = img.getBoundingClientRect();
+        merged.right = Math.round(window.innerWidth - rect.right);
+        merged.bottom = Math.round(window.innerHeight - rect.bottom);
+        merged.width = Math.round(rect.width);
+      }
+      if (zEntry) merged.z = zEntry.z;
+      return merged;
     });
     boxRef.update({ decorations: updated });
   }
+  adjustZState = [];
 }
 
 function positionResizeHandleFor(img, handle) {
@@ -444,6 +460,25 @@ function positionResizeHandleFor(img, handle) {
   handle.style.left = (rect.right - 7) + "px";
   handle.style.top = (rect.bottom - 7) + "px";
 }
+
+function positionOrderToolbarFor(img, toolbar) {
+  const rect = img.getBoundingClientRect();
+  toolbar.style.left = rect.left + "px";
+  toolbar.style.top = (rect.top - 32) + "px";
+}
+
+document.addEventListener("click", (e) => {
+  if (!decoAdjustActive) return;
+  const btn = e.target.closest(".deco-order-toolbar button");
+  if (!btn) return;
+  const id = btn.closest(".deco-order-toolbar").dataset.for;
+  const entry = adjustZState.find((z) => z.id === id);
+  if (!entry) return;
+  const zs = adjustZState.map((z) => z.z);
+  entry.z = btn.dataset.action === "front" ? Math.max(...zs) + 1 : Math.min(...zs) - 1;
+  const img = document.querySelector(`.corner-deco-item[data-id="${id}"]`);
+  if (img) img.style.zIndex = String(5 + entry.z);
+});
 
 el("decoLayer").addEventListener("mousedown", (e) => {
   if (!decoAdjustActive) return;
@@ -456,11 +491,13 @@ el("decoLayer").addEventListener("mousedown", (e) => {
   const startX = e.clientX;
   const startY = e.clientY;
   const handle = document.querySelector(`.deco-resize-handle[data-for="${img.dataset.id}"]`);
+  const toolbar = document.querySelector(`.deco-order-toolbar[data-for="${img.dataset.id}"]`);
 
   function onMove(ev) {
     img.style.right = (startRight - (ev.clientX - startX)) + "px";
     img.style.bottom = (startBottom - (ev.clientY - startY)) + "px";
     if (handle) positionResizeHandleFor(img, handle);
+    if (toolbar) positionOrderToolbarFor(img, toolbar);
   }
   function onUp() {
     document.removeEventListener("mousemove", onMove);
@@ -480,11 +517,13 @@ document.addEventListener("mousedown", (e) => {
   if (!img) return;
   const startWidth = img.getBoundingClientRect().width;
   const startX = e.clientX;
+  const toolbar = document.querySelector(`.deco-order-toolbar[data-for="${handle.dataset.for}"]`);
 
   function onMove(ev) {
     const newWidth = Math.min(320, Math.max(50, startWidth + (ev.clientX - startX)));
     img.style.width = newWidth + "px";
     positionResizeHandleFor(img, handle);
+    if (toolbar) positionOrderToolbarFor(img, toolbar);
   }
   function onUp() {
     document.removeEventListener("mousemove", onMove);
