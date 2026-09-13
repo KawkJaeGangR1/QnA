@@ -77,7 +77,8 @@ function renderDecoLayer() {
     img.src = d.imageUrl;
     img.alt = "장식";
     img.dataset.id = d.id;
-    img.style.right = (d.right || 24) + "px";
+    const centerX = d.centerX != null ? d.centerX : 300;
+    img.style.left = `calc(50vw + ${centerX}px)`;
     img.style.bottom = (d.bottom || 24) + "px";
     img.style.width = (d.width || 120) + "px";
     img.style.zIndex = String(5 + (d.z != null ? d.z : i));
@@ -443,9 +444,10 @@ function exitDecoAdjustMode(save) {
       const merged = { ...d };
       if (img) {
         const rect = img.getBoundingClientRect();
-        merged.right = Math.round(window.innerWidth - rect.right);
+        merged.centerX = Math.round(rect.left - window.innerWidth / 2);
         merged.bottom = Math.round(window.innerHeight - rect.bottom);
         merged.width = Math.round(rect.width);
+        delete merged.right;
       }
       if (zEntry) merged.z = zEntry.z;
       return merged;
@@ -486,7 +488,7 @@ el("decoLayer").addEventListener("mousedown", (e) => {
   if (!img) return;
   e.preventDefault();
   const rect = img.getBoundingClientRect();
-  const startRight = window.innerWidth - rect.right;
+  const startCenterX = rect.left - window.innerWidth / 2;
   const startBottom = window.innerHeight - rect.bottom;
   const startX = e.clientX;
   const startY = e.clientY;
@@ -494,7 +496,8 @@ el("decoLayer").addEventListener("mousedown", (e) => {
   const toolbar = document.querySelector(`.deco-order-toolbar[data-for="${img.dataset.id}"]`);
 
   function onMove(ev) {
-    img.style.right = (startRight - (ev.clientX - startX)) + "px";
+    const newCenterX = startCenterX + (ev.clientX - startX);
+    img.style.left = `calc(50vw + ${newCenterX}px)`;
     img.style.bottom = (startBottom - (ev.clientY - startY)) + "px";
     if (handle) positionResizeHandleFor(img, handle);
     if (toolbar) positionOrderToolbarFor(img, toolbar);
@@ -620,7 +623,7 @@ el("decoAddBtn").addEventListener("click", async () => {
     workingDecorations.push({
       id: `${Date.now()}`,
       imageUrl,
-      right: 24 + idx * 24,
+      centerX: 300 + idx * 24,
       bottom: 24 + idx * 24,
       width: 120,
     });
