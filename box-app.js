@@ -171,12 +171,16 @@ function renderQuestions() {
       const row = document.createElement("div");
       row.className = "answer-row";
 
-      const img = document.createElement("div");
-      img.className = "char-avatar";
       const answerImg = q.expressionImageUrl || boxData.avatarUrl;
+      let img;
       if (answerImg) {
-        img.style.backgroundImage = `url(${answerImg})`;
+        img = document.createElement("img");
+        img.className = "char-avatar-img";
+        img.src = answerImg;
+        img.alt = boxData.nickname || "";
       } else {
+        img = document.createElement("div");
+        img.className = "char-avatar";
         img.textContent = (boxData.nickname || "?").charAt(0);
       }
       row.appendChild(img);
