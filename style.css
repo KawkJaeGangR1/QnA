@@ -195,7 +195,7 @@ html, body {
 @media (min-width: 481px) {
   #landing { box-shadow: 0 24px 60px rgba(0,0,0,0.12); }
 }
-.landing-title { font-size: 22px; font-weight: 700; line-height: 1.4; margin: 0 0 8px; text-align: center; }
+.landing-title { font-family: 'Jua', sans-serif; font-size: 24px; font-weight: 400; line-height: 1.5; margin: 0 0 8px; text-align: center; }
 .landing-sub { font-size: 13px; color: var(--muted); margin: 0 0 24px; text-align: center; }
 .landing-tabs { display: flex; gap: 6px; background: var(--surface-2); border-radius: 20px; padding: 4px; margin-bottom: 20px; }
 .tab-btn {

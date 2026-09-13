@@ -21,10 +21,13 @@ service cloud.firestore {
 
       match /questions/{qid} {
         allow read: if true;
-        allow create: if request.resource.data.text is string
-                      && request.resource.data.text.size() > 0
-                      && request.resource.data.text.size() < 300
-                      && request.resource.data.answer == null;
+        allow create: if (request.auth != null && request.auth.uid == boxId)
+                      || (
+                        request.resource.data.text is string
+                        && request.resource.data.text.size() > 0
+                        && request.resource.data.text.size() < 300
+                        && request.resource.data.answer == null
+                      );
         allow update, delete: if request.auth != null && request.auth.uid == boxId;
       }
     }

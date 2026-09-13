@@ -36,27 +36,35 @@ el("migrateBtn").addEventListener("click", async () => {
   el("migrateBtn").textContent = "복사 중...";
 
   const uid = auth.currentUser.uid;
-  const boxRef = db.collection("boxes").doc(uid).collection("questions");
+  const boxQuestions = db.collection("boxes").doc(uid).collection("questions");
 
-  try {
-    let count = 0;
-    for (const doc of oldDocs) {
-      const data = doc.data();
-      await boxRef.add({
+  let successCount = 0;
+  let failCount = 0;
+
+  for (const doc of oldDocs) {
+    const data = doc.data();
+    try {
+      await boxQuestions.doc(doc.id).set({
         text: data.text || "",
         createdAt: data.createdAt || firebase.firestore.FieldValue.serverTimestamp(),
         answer: data.answer || null,
         answeredAt: data.answeredAt || null,
       });
-      count += 1;
+      successCount += 1;
+    } catch (err) {
+      failCount += 1;
     }
-    el("migrateDone").hidden = false;
-    el("doneCount").textContent = count;
-    el("migrateBtn").hidden = true;
-  } catch (err) {
-    el("migrateError").textContent = "복사 중 문제가 생겼어요: " + err.message;
+  }
+
+  if (failCount > 0) {
+    el("migrateError").textContent =
+      `${successCount}개 복사, ${failCount}개는 실패했어요. Firestore 규칙이 최신 버전으로 게시됐는지 확인한 뒤 다시 시도해보세요 (같은 항목은 덮어써질 뿐 중복되지 않아요).`;
     el("migrateError").hidden = false;
     el("migrateBtn").disabled = false;
-    el("migrateBtn").textContent = "내 익명함으로 복사하기";
+    el("migrateBtn").textContent = "다시 시도";
+  } else {
+    el("migrateDone").hidden = false;
+    el("doneCount").textContent = successCount;
+    el("migrateBtn").hidden = true;
   }
 });
