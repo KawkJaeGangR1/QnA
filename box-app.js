@@ -397,14 +397,30 @@ el("exprAddBtn").addEventListener("click", async () => {
     alert("표정 이름과 사진을 둘 다 넣어주세요.");
     return;
   }
-  const imageUrl = await resizeImageToDataUrl(file, 200, 0.85);
-  workingExpressions.push({ id: `${Date.now()}`, label, imageUrl });
-  el("exprLabelInput").value = "";
-  el("exprFileInput").value = "";
-  renderExprList();
+  try {
+    const imageUrl = await resizeImageToDataUrl(file, 200, 0.85);
+    workingExpressions.push({ id: `${Date.now()}`, label, imageUrl });
+    el("exprLabelInput").value = "";
+    el("exprFileInput").value = "";
+    renderExprList();
+  } catch (err) {
+    alert(err.message || "사진 처리에 실패했어요.");
+  }
 });
 
 function resizeImageToDataUrl(file, maxSize = 240, quality = 0.85) {
+  if (file.type === "image/gif") {
+    return new Promise((resolve, reject) => {
+      if (file.size > 700 * 1024) {
+        reject(new Error("움짤 용량이 너무 커요. 700KB 이하로 줄여서 다시 시도해주세요."));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = (e) => resolve(e.target.result);
+      reader.readAsDataURL(file);
+    });
+  }
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = reject;
