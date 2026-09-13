@@ -24,7 +24,8 @@ const boxRef = db.collection("boxes").doc(boxId);
 boxRef.onSnapshot((doc) => {
   boxData = doc.data();
   if (!boxData) {
-    el("boxNickname").textContent = "존재하지 않는 익명함";
+    el("boxNickname").textContent = "불러오는 중...";
+    maybeSelfHeal();
     return;
   }
   applyTheme(boxData);
@@ -59,12 +60,30 @@ function applyTheme(box) {
 }
 
 /* ===== 로그인 상태 (이 박스의 주인인지 확인) ===== */
+let healed = false;
+async function maybeSelfHeal() {
+  if (healed) return;
+  const user = auth.currentUser;
+  if (!user || user.uid !== boxId) return;
+  if (boxData) return;
+  healed = true;
+  await boxRef.set({
+    nickname: "이름 없음",
+    theme: "daydream",
+    color: "#185FA5",
+    status: { preset: "근무중", note: "" },
+    showTime: true,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+  });
+}
+
 auth.onAuthStateChanged((user) => {
   isAdmin = !!user && user.uid === boxId;
   el("loginMenuItem").hidden = isAdmin;
   el("statusMenuItem").hidden = !isAdmin;
   el("avatarMenuItem").hidden = !isAdmin;
   el("logoutMenuItem").hidden = !isAdmin;
+  if (isAdmin) maybeSelfHeal();
   renderQuestions();
 });
 

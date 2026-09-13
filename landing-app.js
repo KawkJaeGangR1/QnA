@@ -49,8 +49,16 @@ el("createForm").addEventListener("submit", async (e) => {
     return;
   }
 
+  let cred;
   try {
-    const cred = await auth.createUserWithEmailAndPassword(`${id}@${EMAIL_DOMAIN}`, pw);
+    cred = await auth.createUserWithEmailAndPassword(`${id}@${EMAIL_DOMAIN}`, pw);
+  } catch (err) {
+    el("createError").textContent = errorMessage(err);
+    el("createError").hidden = false;
+    return;
+  }
+
+  try {
     await db.collection("boxes").doc(cred.user.uid).set({
       nickname,
       theme,
@@ -58,10 +66,11 @@ el("createForm").addEventListener("submit", async (e) => {
       status: { preset: "근무중", note: "" },
       showTime: true,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    });
+    }, { merge: true });
     location.href = `box.html?id=${cred.user.uid}`;
   } catch (err) {
-    el("createError").textContent = errorMessage(err);
+    el("createError").textContent =
+      "계정은 만들어졌는데 익명함 정보 저장에 실패했어요. Firestore 규칙이 게시됐는지 확인한 뒤, 로그인 탭에서 방금 만든 아이디로 다시 로그인해보세요.";
     el("createError").hidden = false;
   }
 });
