@@ -41,6 +41,7 @@ html, body {
   display: flex; align-items: center; gap: 10px;
   padding: 12px 20px; background: var(--surface-2);
   border-bottom: 1px solid var(--line); flex-shrink: 0;
+  text-decoration: none; color: inherit; cursor: pointer;
 }
 .logo-img { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
 .workspace-name { font-size: 12px; font-weight: 500; margin: 0; }
@@ -137,6 +138,7 @@ html, body {
   display: flex; align-items: center; gap: 12px; width: 100%;
   background: none; border: none; text-align: left; padding: 14px 12px;
   font-size: 14px; color: var(--ink); cursor: pointer; border-radius: 12px;
+  text-decoration: none; box-sizing: border-box;
 }
 .sheet-item:hover { background: var(--surface-2); }
 .sheet-item[hidden] { display: none; }
