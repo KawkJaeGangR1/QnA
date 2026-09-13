@@ -27,6 +27,14 @@ service cloud.firestore {
                         && request.resource.data.text.size() > 0
                         && request.resource.data.text.size() < 300
                         && request.resource.data.answer == null
+                        && (
+                          !('imageUrl' in request.resource.data)
+                          || (
+                            get(/databases/$(database)/documents/boxes/$(boxId)).data.allowImageAttach == true
+                            && request.resource.data.imageUrl is string
+                            && request.resource.data.imageUrl.size() < 400000
+                          )
+                        )
                       );
         allow update, delete: if request.auth != null && request.auth.uid == boxId;
       }
@@ -58,9 +66,13 @@ Firebase Authentication에 저장됩니다. 화면에는 아이디/비밀번호�
 
 ## 4. 지금 상태 / 아직 안 된 것
 
-- 프로필 사진은 로그인 후 메뉴 > 프로필 사진 변경에서 업로드 가능 (Storage 없이 Firestore에 축소 저장하는 방식)
-- 표정별 이미지, 배경화면, 위치란, 트위터 프로필 링크, 스티커 등은 다음 단계 "프로필 설정창 통합"에서 추가 예정
+- 로그인 후 메뉴 > **프로필 설정**에서 한 화면에서 전부 관리: 닉네임, 색상, 프로필 사진, 상태(근무중 등)+한마디+위치, 배경화면, 트위터 프로필 링크, 시간 표시 on/off, **방문자 사진 첨부 허용 on/off**
+- 방문자 사진 첨부를 켜두면 질문 입력창에 첨부 버튼이 나타나고, 방문자가 익명으로 사진을 붙여 질문할 수 있어요. 로그인 없이도 되는 대신, 신고 기능은 없어서 켜둔 상태에서 부적절한 사진이 올라오면 삭제로만 대응할 수 있어요 — 필요하면 언제든 꺼둘 수 있고, 기본값은 꺼짐이에요
+- 프로필 사진/배경화면은 Storage 없이 Firestore에 축소 저장하는 방식 (사진은 240px, 배경은 480px 기준으로 자동 축소)
+- 트위터 링크를 등록하면 프로필 사진을 눌렀을 때 그 링크로 이동
+- 스티커 꾸미기 기능은 아직 없음 (다음 단계 후보)
 - 예전 단일 사용자 버전 테스트 데이터는 `migrate.html`로 옮길 수 있습니다 (아래 6번 참고)
+- `og-banner.png`: 트위터/카카오 등에 링크 공유 시 뜨는 공통 미리보기 이미지 (박스마다 다르게는 안 됨, 모든 링크가 같은 이미지 공유)
 
 ## 5. 배포 (GitHub Pages)
 

@@ -33,7 +33,9 @@ boxRef.onSnapshot((doc) => {
   el("boxNickname").textContent = boxData.nickname || "이름 없음";
 
   const status = boxData.status || { preset: "근무중", note: "" };
-  el("statusLine").textContent = status.note ? `${status.preset} · ${status.note}` : status.preset;
+  let statusLine = status.note ? `${status.preset} · ${status.note}` : status.preset;
+  if (status.location) statusLine += ` · ${status.location}`;
+  el("statusLine").textContent = statusLine;
 
   if (boxData.avatarUrl) {
     el("mainAvatar").style.backgroundImage = `url(${boxData.avatarUrl})`;
@@ -42,6 +44,24 @@ boxRef.onSnapshot((doc) => {
     el("mainAvatar").style.backgroundImage = "none";
     el("mainAvatar").textContent = (boxData.nickname || "?").charAt(0);
   }
+
+  if (boxData.twitterUrl) {
+    el("mainAvatar").style.cursor = "pointer";
+    el("mainAvatar").onclick = () => window.open(boxData.twitterUrl, "_blank", "noopener");
+  } else {
+    el("mainAvatar").style.cursor = "default";
+    el("mainAvatar").onclick = null;
+  }
+
+  if (boxData.bgUrl) {
+    el("app").style.backgroundImage = `url(${boxData.bgUrl})`;
+    el("app").style.backgroundSize = "cover";
+    el("app").style.backgroundPosition = "center";
+  } else {
+    el("app").style.backgroundImage = "none";
+  }
+
+  el("attachBtn").hidden = !boxData.allowImageAttach;
 
   renderQuestions();
 });
@@ -80,10 +100,8 @@ async function maybeSelfHeal() {
 auth.onAuthStateChanged((user) => {
   isAdmin = !!user && user.uid === boxId;
   el("loginMenuItem").hidden = isAdmin;
-  el("statusMenuItem").hidden = !isAdmin;
-  el("avatarMenuItem").hidden = !isAdmin;
+  el("profileMenuItem").hidden = !isAdmin;
   el("logoutMenuItem").hidden = !isAdmin;
-  if (isAdmin) maybeSelfHeal();
   renderQuestions();
 });
 
@@ -118,7 +136,16 @@ function renderQuestions() {
 
     const qBubble = document.createElement("div");
     qBubble.className = "bubble question";
-    qBubble.textContent = q.text;
+    if (q.imageUrl) {
+      const img = document.createElement("img");
+      img.className = "bubble-image";
+      img.src = q.imageUrl;
+      img.alt = "첨부한 사진";
+      qBubble.appendChild(img);
+    }
+    const qText = document.createElement("span");
+    qText.textContent = q.text;
+    qBubble.appendChild(qText);
     block.appendChild(qBubble);
 
     if (showTime) {
@@ -209,19 +236,48 @@ async function retractAnswer(id) {
   });
 }
 
-/* ===== 질문 제출 ===== */
+/* ===== 질문 제출 (사진 첨부 포함) ===== */
+let composerImageFile = null;
+
+el("attachBtn").addEventListener("click", () => el("composerImageInput").click());
+
+el("composerImageInput").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  composerImageFile = file;
+  el("composerImageThumb").src = URL.createObjectURL(file);
+  el("composerImagePreview").hidden = false;
+});
+
+el("composerImageRemove").addEventListener("click", () => {
+  composerImageFile = null;
+  el("composerImageInput").value = "";
+  el("composerImagePreview").hidden = true;
+});
+
 el("composerForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const input = el("questionInput");
   const text = input.value.trim();
   if (!text) return;
-  input.value = "";
-  await boxRef.collection("questions").add({
+
+  const payload = {
     text,
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     answer: null,
     answeredAt: null,
-  });
+  };
+
+  if (composerImageFile) {
+    payload.imageUrl = await resizeImageToDataUrl(composerImageFile, 640, 0.7);
+  }
+
+  input.value = "";
+  composerImageFile = null;
+  el("composerImageInput").value = "";
+  el("composerImagePreview").hidden = true;
+
+  await boxRef.collection("questions").add(payload);
 });
 
 /* ===== 슬라이드 메뉴 ===== */
@@ -278,38 +334,12 @@ el("loginSubmit").addEventListener("click", async () => {
   }
 });
 
-/* ===== 상태 변경 모달 ===== */
-el("statusMenuItem").addEventListener("click", async () => {
-  el("menuBackdrop").classList.remove("open");
-  const status = (boxData && boxData.status) || { preset: "근무중", note: "" };
-  document.querySelectorAll(".preset-btn").forEach((b) => {
-    b.classList.toggle("active", b.dataset.preset === status.preset);
-  });
-  el("statusNoteInput").value = status.note || "";
-  el("statusBackdrop").classList.add("open");
-});
-el("statusCancel").addEventListener("click", () => el("statusBackdrop").classList.remove("open"));
-el("statusBackdrop").addEventListener("click", (e) => {
-  if (e.target === el("statusBackdrop")) el("statusBackdrop").classList.remove("open");
-});
-document.querySelectorAll(".preset-btn").forEach((b) => {
-  b.addEventListener("click", () => {
-    document.querySelectorAll(".preset-btn").forEach((x) => x.classList.remove("active"));
-    b.classList.add("active");
-  });
-});
-el("statusSubmit").addEventListener("click", async () => {
-  const activeBtn = document.querySelector(".preset-btn.active");
-  const preset = activeBtn ? activeBtn.dataset.preset : "근무중";
-  const note = el("statusNoteInput").value.trim();
-  await boxRef.update({ status: { preset, note } });
-  el("statusBackdrop").classList.remove("open");
-});
-
-/* ===== 프로필 사진 변경 모달 ===== */
+/* ===== 프로필 설정 모달 ===== */
 let selectedAvatarFile = null;
+let selectedBgFile = null;
+let clearBg = false;
 
-function resizeImageToDataUrl(file, maxSize = 240) {
+function resizeImageToDataUrl(file, maxSize = 240, quality = 0.85) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = reject;
@@ -322,7 +352,7 @@ function resizeImageToDataUrl(file, maxSize = 240) {
         canvas.width = img.width * scale;
         canvas.height = img.height * scale;
         canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", 0.85));
+        resolve(canvas.toDataURL("image/jpeg", quality));
       };
       img.src = e.target.result;
     };
@@ -330,36 +360,134 @@ function resizeImageToDataUrl(file, maxSize = 240) {
   });
 }
 
-el("avatarMenuItem").addEventListener("click", () => {
+el("profileMenuItem").addEventListener("click", () => {
   el("menuBackdrop").classList.remove("open");
+  if (!boxData) return;
+
   selectedAvatarFile = null;
+  selectedBgFile = null;
+  clearBg = false;
   el("avatarFileInput").value = "";
-  el("avatarError").hidden = true;
+  el("bgFileInput").value = "";
+  el("profileError").hidden = true;
+
   el("avatarPreview").style.backgroundImage = el("mainAvatar").style.backgroundImage;
-  el("avatarBackdrop").classList.add("open");
+  el("bgPreview").style.backgroundImage = boxData.bgUrl ? `url(${boxData.bgUrl})` : "none";
+  el("nicknameInput").value = boxData.nickname || "";
+  el("twitterInput").value = boxData.twitterUrl || "";
+
+  const status = boxData.status || { preset: "근무중", note: "", location: "" };
+  document.querySelectorAll(".preset-btn").forEach((b) => {
+    b.classList.toggle("active", b.dataset.preset === status.preset);
+  });
+  el("statusNoteInput").value = status.note || "";
+  el("locationInput").value = status.location || "";
+
+  document.querySelectorAll(".color-swatch").forEach((b) => {
+    b.classList.toggle("active", b.dataset.color === (boxData.color || "#185FA5"));
+  });
+
+  const showTime = boxData.showTime !== false;
+  el("showTimeToggle").setAttribute("aria-pressed", showTime ? "true" : "false");
+  el("allowImageToggle").setAttribute("aria-pressed", boxData.allowImageAttach ? "true" : "false");
+
+  el("profileBackdrop").classList.add("open");
 });
-el("avatarCancel").addEventListener("click", () => el("avatarBackdrop").classList.remove("open"));
-el("avatarBackdrop").addEventListener("click", (e) => {
-  if (e.target === el("avatarBackdrop")) el("avatarBackdrop").classList.remove("open");
+
+el("profileCancel").addEventListener("click", () => el("profileBackdrop").classList.remove("open"));
+el("profileBackdrop").addEventListener("click", (e) => {
+  if (e.target === el("profileBackdrop")) el("profileBackdrop").classList.remove("open");
 });
+
+document.querySelectorAll(".preset-btn").forEach((b) => {
+  b.addEventListener("click", () => {
+    document.querySelectorAll(".preset-btn").forEach((x) => x.classList.remove("active"));
+    b.classList.add("active");
+  });
+});
+
+document.querySelectorAll(".color-swatch").forEach((b) => {
+  b.addEventListener("click", () => {
+    document.querySelectorAll(".color-swatch").forEach((x) => x.classList.remove("active"));
+    b.classList.add("active");
+  });
+});
+
+el("showTimeToggle").addEventListener("click", () => {
+  const pressed = el("showTimeToggle").getAttribute("aria-pressed") === "true";
+  el("showTimeToggle").setAttribute("aria-pressed", pressed ? "false" : "true");
+});
+
+el("allowImageToggle").addEventListener("click", () => {
+  const pressed = el("allowImageToggle").getAttribute("aria-pressed") === "true";
+  el("allowImageToggle").setAttribute("aria-pressed", pressed ? "false" : "true");
+});
+
 el("avatarFileInput").addEventListener("change", (e) => {
   const file = e.target.files[0];
   if (!file) return;
   selectedAvatarFile = file;
   el("avatarPreview").style.backgroundImage = `url(${URL.createObjectURL(file)})`;
 });
-el("avatarSubmit").addEventListener("click", async () => {
-  if (!selectedAvatarFile) {
-    el("avatarBackdrop").classList.remove("open");
-    return;
-  }
+
+el("bgFileInput").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  selectedBgFile = file;
+  clearBg = false;
+  el("bgPreview").style.backgroundImage = `url(${URL.createObjectURL(file)})`;
+});
+
+el("bgClearBtn").addEventListener("click", () => {
+  selectedBgFile = null;
+  clearBg = true;
+  el("bgFileInput").value = "";
+  el("bgPreview").style.backgroundImage = "none";
+});
+
+el("profileSubmit").addEventListener("click", async () => {
+  el("profileError").hidden = true;
+  el("profileSubmit").disabled = true;
+  el("profileSubmit").textContent = "저장 중...";
+
   try {
-    const dataUrl = await resizeImageToDataUrl(selectedAvatarFile, 240);
-    await boxRef.update({ avatarUrl: dataUrl });
-    el("avatarBackdrop").classList.remove("open");
+    const nickname = el("nicknameInput").value.trim() || "이름 없음";
+    const twitterUrl = el("twitterInput").value.trim();
+    const activePreset = document.querySelector(".preset-btn.active");
+    const activeColor = document.querySelector(".color-swatch.active");
+    const showTime = el("showTimeToggle").getAttribute("aria-pressed") === "true";
+    const allowImageAttach = el("allowImageToggle").getAttribute("aria-pressed") === "true";
+
+    const update = {
+      nickname,
+      twitterUrl,
+      color: activeColor ? activeColor.dataset.color : (boxData.color || "#185FA5"),
+      status: {
+        preset: activePreset ? activePreset.dataset.preset : "근무중",
+        note: el("statusNoteInput").value.trim(),
+        location: el("locationInput").value.trim(),
+      },
+      showTime,
+      allowImageAttach,
+    };
+
+    if (selectedAvatarFile) {
+      update.avatarUrl = await resizeImageToDataUrl(selectedAvatarFile, 240, 0.85);
+    }
+    if (selectedBgFile) {
+      update.bgUrl = await resizeImageToDataUrl(selectedBgFile, 480, 0.7);
+    } else if (clearBg) {
+      update.bgUrl = firebase.firestore.FieldValue.delete();
+    }
+
+    await boxRef.update(update);
+    el("profileBackdrop").classList.remove("open");
   } catch (err) {
-    el("avatarError").textContent = "업로드에 실패했어요. 다시 시도해주세요.";
-    el("avatarError").hidden = false;
+    el("profileError").textContent = "저장에 실패했어요. 다시 시도해주세요.";
+    el("profileError").hidden = false;
+  } finally {
+    el("profileSubmit").disabled = false;
+    el("profileSubmit").textContent = "저장";
   }
 });
 
