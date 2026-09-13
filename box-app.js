@@ -405,7 +405,7 @@ el("exprAddBtn").addEventListener("click", async () => {
     return;
   }
   try {
-    const imageUrl = await resizeImageToDataUrl(file, 200, 0.85);
+    const imageUrl = await resizeImageToDataUrl(file, 200, 0.85, "png");
     workingExpressions.push({ id: `${Date.now()}`, label, imageUrl });
     el("exprLabelInput").value = "";
     el("exprFileInput").value = "";
@@ -415,7 +415,7 @@ el("exprAddBtn").addEventListener("click", async () => {
   }
 });
 
-function resizeImageToDataUrl(file, maxSize = 240, quality = 0.85) {
+function resizeImageToDataUrl(file, maxSize = 240, quality = 0.85, format = "jpeg") {
   if (file.type === "image/gif") {
     return new Promise((resolve, reject) => {
       if (file.size > 700 * 1024) {
@@ -440,7 +440,11 @@ function resizeImageToDataUrl(file, maxSize = 240, quality = 0.85) {
         canvas.width = img.width * scale;
         canvas.height = img.height * scale;
         canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", quality));
+        if (format === "png") {
+          resolve(canvas.toDataURL("image/png"));
+        } else {
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        }
       };
       img.src = e.target.result;
     };
@@ -566,7 +570,7 @@ el("profileSubmit").addEventListener("click", async () => {
     };
 
     if (selectedAvatarFile) {
-      update.avatarUrl = await resizeImageToDataUrl(selectedAvatarFile, 240, 0.85);
+      update.avatarUrl = await resizeImageToDataUrl(selectedAvatarFile, 240, 0.85, "png");
     }
     if (selectedBgFile) {
       update.bgUrl = await resizeImageToDataUrl(selectedBgFile, 480, 0.7);
