@@ -54,9 +54,9 @@ boxRef.onSnapshot((doc) => {
   }
 
   if (boxData.bgUrl) {
-    el("app").style.backgroundImage = `url(${boxData.bgUrl})`;
-    el("app").style.backgroundSize = "cover";
-    el("app").style.backgroundPosition = "center";
+    el("app").style.backgroundImage = `linear-gradient(rgba(255,255,255,0.82), rgba(255,255,255,0.82)), url(${boxData.bgUrl})`;
+    el("app").style.backgroundSize = "cover, cover";
+    el("app").style.backgroundPosition = "center, center";
   } else {
     el("app").style.backgroundImage = "none";
   }
@@ -68,6 +68,7 @@ boxRef.onSnapshot((doc) => {
 
 function applyTheme(box) {
   document.documentElement.style.setProperty("--accent", box.color || "#185FA5");
+  document.body.classList.toggle("theme-disaster", box.theme === "disaster");
   if (box.theme === "disaster") {
     el("workspaceLogo").src = "disaster_logo.png";
     el("workspaceName").textContent = "초자연 재난관리국";
@@ -161,8 +162,9 @@ function renderQuestions() {
 
       const img = document.createElement("div");
       img.className = "char-avatar";
-      if (boxData.avatarUrl) {
-        img.style.backgroundImage = `url(${boxData.avatarUrl})`;
+      const answerImg = q.expressionImageUrl || boxData.avatarUrl;
+      if (answerImg) {
+        img.style.backgroundImage = `url(${answerImg})`;
       } else {
         img.textContent = (boxData.nickname || "?").charAt(0);
       }
@@ -233,6 +235,7 @@ async function retractAnswer(id) {
   await boxRef.collection("questions").doc(id).update({
     answer: null,
     answeredAt: null,
+    expressionImageUrl: null,
   });
 }
 
@@ -268,16 +271,20 @@ el("composerForm").addEventListener("submit", async (e) => {
     answeredAt: null,
   };
 
-  if (composerImageFile) {
-    payload.imageUrl = await resizeImageToDataUrl(composerImageFile, 640, 0.7);
+  try {
+    if (composerImageFile) {
+      payload.imageUrl = await resizeImageToDataUrl(composerImageFile, 640, 0.7);
+    }
+
+    await boxRef.collection("questions").add(payload);
+
+    input.value = "";
+    composerImageFile = null;
+    el("composerImageInput").value = "";
+    el("composerImagePreview").hidden = true;
+  } catch (err) {
+    alert("전송에 실패했어요: " + err.message);
   }
-
-  input.value = "";
-  composerImageFile = null;
-  el("composerImageInput").value = "";
-  el("composerImagePreview").hidden = true;
-
-  await boxRef.collection("questions").add(payload);
 });
 
 /* ===== 슬라이드 메뉴 ===== */
@@ -338,6 +345,47 @@ el("loginSubmit").addEventListener("click", async () => {
 let selectedAvatarFile = null;
 let selectedBgFile = null;
 let clearBg = false;
+let workingExpressions = [];
+
+function renderExprList() {
+  const list = el("exprList");
+  list.innerHTML = "";
+  workingExpressions.forEach((expr) => {
+    const chip = document.createElement("span");
+    chip.className = "expr-chip";
+    const img = document.createElement("img");
+    img.src = expr.imageUrl;
+    img.alt = expr.label;
+    chip.appendChild(img);
+    const label = document.createElement("span");
+    label.textContent = expr.label;
+    chip.appendChild(label);
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.setAttribute("aria-label", "표정 삭제");
+    removeBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>';
+    removeBtn.addEventListener("click", () => {
+      workingExpressions = workingExpressions.filter((e) => e.id !== expr.id);
+      renderExprList();
+    });
+    chip.appendChild(removeBtn);
+    list.appendChild(chip);
+  });
+}
+
+el("exprAddBtn").addEventListener("click", async () => {
+  const label = el("exprLabelInput").value.trim();
+  const file = el("exprFileInput").files[0];
+  if (!label || !file) {
+    alert("표정 이름과 사진을 둘 다 넣어주세요.");
+    return;
+  }
+  const imageUrl = await resizeImageToDataUrl(file, 200, 0.85);
+  workingExpressions.push({ id: `${Date.now()}`, label, imageUrl });
+  el("exprLabelInput").value = "";
+  el("exprFileInput").value = "";
+  renderExprList();
+});
 
 function resizeImageToDataUrl(file, maxSize = 240, quality = 0.85) {
   return new Promise((resolve, reject) => {
@@ -375,6 +423,11 @@ el("profileMenuItem").addEventListener("click", () => {
   el("bgPreview").style.backgroundImage = boxData.bgUrl ? `url(${boxData.bgUrl})` : "none";
   el("nicknameInput").value = boxData.nickname || "";
   el("twitterInput").value = boxData.twitterUrl || "";
+
+  workingExpressions = (boxData.expressions || []).slice();
+  el("exprLabelInput").value = "";
+  el("exprFileInput").value = "";
+  renderExprList();
 
   const status = boxData.status || { preset: "근무중", note: "", location: "" };
   document.querySelectorAll(".preset-btn").forEach((b) => {
@@ -469,6 +522,7 @@ el("profileSubmit").addEventListener("click", async () => {
       },
       showTime,
       allowImageAttach,
+      expressions: workingExpressions,
     };
 
     if (selectedAvatarFile) {
@@ -493,13 +547,66 @@ el("profileSubmit").addEventListener("click", async () => {
 
 /* ===== 답변 작성 모달 ===== */
 let answeringId = null;
+let selectedExpressionImageUrl = null;
 
 function openAnswerModal(id, questionText) {
   answeringId = id;
   el("answerQuestionText").textContent = questionText;
   el("answerInput").value = "";
+  selectedExpressionImageUrl = null;
+  updateExpressionButton();
+  renderExpressionPicker();
+  el("expressionPicker").hidden = true;
   el("answerBackdrop").classList.add("open");
 }
+
+function updateExpressionButton() {
+  const url = selectedExpressionImageUrl || (boxData && boxData.avatarUrl);
+  el("expressionBtn").style.backgroundImage = url ? `url(${url})` : "none";
+  const match = (boxData && boxData.expressions || []).find((e) => e.imageUrl === selectedExpressionImageUrl);
+  el("expressionLabel").textContent = match ? match.label : "기본";
+}
+
+function renderExpressionPicker() {
+  const picker = el("expressionPicker");
+  picker.innerHTML = "";
+
+  const defaultBtn = document.createElement("button");
+  defaultBtn.type = "button";
+  defaultBtn.textContent = "기본";
+  defaultBtn.classList.toggle("active", !selectedExpressionImageUrl);
+  defaultBtn.addEventListener("click", () => {
+    selectedExpressionImageUrl = null;
+    updateExpressionButton();
+    renderExpressionPicker();
+    picker.hidden = true;
+  });
+  picker.appendChild(defaultBtn);
+
+  (( boxData && boxData.expressions) || []).forEach((expr) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.classList.toggle("active", selectedExpressionImageUrl === expr.imageUrl);
+    const img = document.createElement("img");
+    img.src = expr.imageUrl;
+    img.alt = expr.label;
+    btn.appendChild(img);
+    const span = document.createElement("span");
+    span.textContent = expr.label;
+    btn.appendChild(span);
+    btn.addEventListener("click", () => {
+      selectedExpressionImageUrl = expr.imageUrl;
+      updateExpressionButton();
+      renderExpressionPicker();
+      picker.hidden = true;
+    });
+    picker.appendChild(btn);
+  });
+}
+
+el("expressionBtn").addEventListener("click", () => {
+  el("expressionPicker").hidden = !el("expressionPicker").hidden;
+});
 
 el("answerCancel").addEventListener("click", () => el("answerBackdrop").classList.remove("open"));
 el("answerBackdrop").addEventListener("click", (e) => {
@@ -512,6 +619,7 @@ el("answerSubmit").addEventListener("click", async () => {
   await boxRef.collection("questions").doc(answeringId).update({
     answer,
     answeredAt: firebase.firestore.FieldValue.serverTimestamp(),
+    expressionImageUrl: selectedExpressionImageUrl,
   });
   el("answerBackdrop").classList.remove("open");
 });

@@ -118,6 +118,14 @@
           <input type="file" id="avatarFileInput" accept="image/*">
         </div>
 
+        <label>표정 이미지 (답변 달 때 골라 쓸 수 있어요)</label>
+        <div class="expr-list" id="exprList"></div>
+        <div class="expr-add-row">
+          <input type="text" id="exprLabelInput" placeholder="표정 이름 (예: 흥미로움)" maxlength="10">
+          <input type="file" id="exprFileInput" accept="image/*">
+          <button type="button" class="btn-ghost" id="exprAddBtn">추가</button>
+        </div>
+
         <label>닉네임</label>
         <input type="text" id="nicknameInput" maxlength="20">
 
@@ -180,6 +188,11 @@
       <p class="modal-title">답변 작성</p>
       <p class="modal-question" id="answerQuestionText"></p>
       <textarea id="answerInput" rows="3" placeholder="답변을 입력하세요" maxlength="1000"></textarea>
+      <div class="expression-row">
+        <button type="button" class="expression-btn" id="expressionBtn" aria-label="표정 선택"></button>
+        <span class="expression-label" id="expressionLabel">기본</span>
+      </div>
+      <div class="expression-picker" id="expressionPicker" hidden></div>
       <div class="modal-actions">
         <button class="btn-ghost" id="answerCancel">취소</button>
         <button class="btn-primary" id="answerSubmit">답변 게시</button>
