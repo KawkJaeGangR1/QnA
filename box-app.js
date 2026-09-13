@@ -67,8 +67,19 @@ boxRef.onSnapshot((doc) => {
 });
 
 function applyTheme(box) {
-  document.documentElement.style.setProperty("--accent", box.color || "#185FA5");
-  document.body.classList.toggle("theme-disaster", box.theme === "disaster");
+  const root = document.documentElement.style;
+  root.setProperty("--accent", box.color || "#185FA5");
+  if (box.theme === "disaster") {
+    root.setProperty("--page", "#E4EBF1");
+    root.setProperty("--surface", "#FBFDFE");
+    root.setProperty("--surface-2", "#DCE6EE");
+    root.setProperty("--line", "#C3D2DC");
+  } else {
+    root.removeProperty("--page");
+    root.removeProperty("--surface");
+    root.removeProperty("--surface-2");
+    root.removeProperty("--line");
+  }
   if (box.theme === "disaster") {
     el("workspaceLogo").src = "disaster_logo.png";
     el("workspaceName").textContent = "초자연 재난관리국";
@@ -187,6 +198,12 @@ function renderQuestions() {
       if (isAdmin) {
         const actions = document.createElement("div");
         actions.className = "admin-actions";
+
+        const editBtn = document.createElement("button");
+        editBtn.className = "answer-cta";
+        editBtn.textContent = "수정";
+        editBtn.addEventListener("click", () => openAnswerModal(q.id, q.text, q.answer, q.expressionImageUrl));
+        actions.appendChild(editBtn);
 
         const undoBtn = document.createElement("button");
         undoBtn.className = "answer-cta";
@@ -548,12 +565,15 @@ el("profileSubmit").addEventListener("click", async () => {
 /* ===== 답변 작성 모달 ===== */
 let answeringId = null;
 let selectedExpressionImageUrl = null;
+let editingExistingAnswer = false;
 
-function openAnswerModal(id, questionText) {
+function openAnswerModal(id, questionText, existingAnswer, existingExpressionImageUrl) {
   answeringId = id;
   el("answerQuestionText").textContent = questionText;
-  el("answerInput").value = "";
-  selectedExpressionImageUrl = null;
+  el("answerInput").value = existingAnswer || "";
+  editingExistingAnswer = !!existingAnswer;
+  el("answerModalTitle").textContent = editingExistingAnswer ? "답변 수정" : "답변 작성";
+  selectedExpressionImageUrl = existingExpressionImageUrl || null;
   updateExpressionButton();
   renderExpressionPicker();
   el("expressionPicker").hidden = true;
@@ -616,10 +636,13 @@ el("answerBackdrop").addEventListener("click", (e) => {
 el("answerSubmit").addEventListener("click", async () => {
   const answer = el("answerInput").value.trim();
   if (!answer || !answeringId) return;
-  await boxRef.collection("questions").doc(answeringId).update({
+  const update = {
     answer,
-    answeredAt: firebase.firestore.FieldValue.serverTimestamp(),
     expressionImageUrl: selectedExpressionImageUrl,
-  });
+  };
+  if (!editingExistingAnswer) {
+    update.answeredAt = firebase.firestore.FieldValue.serverTimestamp();
+  }
+  await boxRef.collection("questions").doc(answeringId).update(update);
   el("answerBackdrop").classList.remove("open");
 });

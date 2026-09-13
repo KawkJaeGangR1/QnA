@@ -37,6 +37,7 @@ el("createForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const id = el("createId").value.trim();
   const pw = el("createPw").value;
+  const pwConfirm = el("createPwConfirm").value;
   const nickname = el("createNickname").value.trim();
   const theme = el("createTheme").value;
   const activeThemeBtn = document.querySelector(".theme-btn.active");
@@ -45,6 +46,12 @@ el("createForm").addEventListener("submit", async (e) => {
 
   if (!/^[a-zA-Z0-9_]{3,20}$/.test(id)) {
     el("createError").textContent = "아이디는 영문/숫자/밑줄 3~20자로 입력해주세요.";
+    el("createError").hidden = false;
+    return;
+  }
+
+  if (pw !== pwConfirm) {
+    el("createError").textContent = "비밀번호가 서로 달라요. 다시 확인해주세요.";
     el("createError").hidden = false;
     return;
   }
